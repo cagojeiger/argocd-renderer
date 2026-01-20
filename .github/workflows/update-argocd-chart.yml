@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '34 17 * * *'
   workflow_dispatch:
+    inputs:
+      auto_merge:
+        description: 'Enable auto-merge for created PR'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -77,6 +83,7 @@ jobs:
           cd ..
 
       - name: Create Pull Request
+        id: create-pr
         if: steps.check.outputs.needs_update == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -109,3 +116,26 @@ jobs:
             dependencies
             argocd
             automated
+
+      - name: Enable Pull Request Auto-Merge
+        if: |
+          steps.check.outputs.needs_update == 'true' &&
+          steps.create-pr.outputs.pull-request-number != '' &&
+          (github.event_name == 'schedule' ||
+           (github.event_name == 'workflow_dispatch' &&
+            (inputs.auto_merge == true || inputs.auto_merge == null)))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}" \
+            --body "Auto-merging after required checks pass"
+
+      - name: Auto-merge Status
+        if: steps.check.outputs.needs_update == 'true' && steps.create-pr.outputs.pull-request-number != ''
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ inputs.auto_merge }}" == "true" ]; then
+            echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
+            echo "   Merge method: squash"
+          else
+            echo "ℹ️  Auto-merge not enabled (manual review requested)"
+          fi
