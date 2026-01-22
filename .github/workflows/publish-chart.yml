@@ -17,7 +17,7 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
@@ -40,9 +40,16 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      - name: Update gh-pages
+      - name: Copy chart to gh-pages
+        run: cp .deploy/*.tgz gh-pages/
+
+      - name: Cleanup old versions
         run: |
-          cp .deploy/*.tgz gh-pages/
+          cd gh-pages
+          ls -t *.tgz 2>/dev/null | tail -n +11 | xargs -r rm -f
+
+      - name: Generate index.yaml
+        run: |
           cd gh-pages
           helm repo index . --url https://cagojeiger.github.io/argocd-renderer
 
