@@ -1,3 +1,48 @@
+# Ingress (Nginx, Traefik 등 - 레거시, 2026년 3월 은퇴 예정)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # nginx.ingress.kubernetes.io/limit-rps: "10"
+    # nginx.ingress.kubernetes.io/limit-connections: "5"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+  host: argocd-renderer.example.com
+  path: /
+  pathType: Prefix
+  tls: []
+    # - secretName: argocd-renderer-tls
+    #   hosts:
+    #     - argocd-renderer.example.com
+
+# Gateway API HTTPRoute (새 표준, 권장)
+route:
+  enabled: false
+  kind: HTTPRoute
+  parentRefs: []
+    # - name: my-gateway
+    #   namespace: default
+  hostnames: []
+    # - argocd-renderer.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs: []
+        # 자동으로 ArgoCD server service 참조
+
+# Istio VirtualService (Istio 환경 전용)
+virtualService:
+  enabled: false
+  gateway: ""  # istio-system/main-gateway
+  host: argocd-renderer.example.com
+  match:
+    - uri:
+        prefix: /
+  retries:
+    attempts: 3
+    perTryTimeout: 30s
+
 argo-cd:
   enabled: true
 

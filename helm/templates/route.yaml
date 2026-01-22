@@ -1,0 +1,35 @@
+{{- if .Values.route.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: {{ .Values.route.kind | default "HTTPRoute" }}
+metadata:
+  name: {{ include "argocd-renderer.fullname" . }}
+  labels:
+    {{- include "argocd-renderer.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.route.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.route.parentRefs | nindent 4 }}
+  {{- end }}
+  {{- if .Values.route.hostnames }}
+  hostnames:
+    {{- toYaml .Values.route.hostnames | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- if .Values.route.rules }}
+    {{- range .Values.route.rules }}
+    - matches:
+        {{- toYaml .matches | nindent 8 }}
+      backendRefs:
+        - name: {{ include "argocd-renderer.fullname" $ }}-argo-cd-server
+          port: 80
+    {{- end }}
+    {{- else }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "argocd-renderer.fullname" . }}-argo-cd-server
+          port: 80
+    {{- end }}
+{{- end }}

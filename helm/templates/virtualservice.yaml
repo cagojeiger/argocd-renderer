@@ -1,0 +1,25 @@
+{{- if .Values.virtualService.enabled -}}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "argocd-renderer.fullname" . }}
+  labels:
+    {{- include "argocd-renderer.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ .Values.virtualService.host | quote }}
+  gateways:
+    - {{ .Values.virtualService.gateway }}
+  http:
+    - match:
+        {{- toYaml .Values.virtualService.match | nindent 8 }}
+      {{- if .Values.virtualService.retries }}
+      retries:
+        {{- toYaml .Values.virtualService.retries | nindent 8 }}
+      {{- end }}
+      route:
+        - destination:
+            host: {{ include "argocd-renderer.fullname" . }}-argo-cd-server
+            port:
+              number: 80
+{{- end }}
