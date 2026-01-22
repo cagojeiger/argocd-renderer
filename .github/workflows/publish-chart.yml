@@ -28,6 +28,9 @@ jobs:
           echo "name=$(yq '.name' helm/Chart.yaml)" >> $GITHUB_OUTPUT
           echo "version=$(yq '.version' helm/Chart.yaml)" >> $GITHUB_OUTPUT
 
+      - name: Add Helm repositories
+        run: helm repo add argo-cd https://argoproj.github.io/argo-helm
+
       - name: Build dependencies
         run: helm dependency build helm/
 
