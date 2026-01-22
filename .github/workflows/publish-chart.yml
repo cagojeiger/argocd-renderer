@@ -7,6 +7,10 @@ on:
       - 'helm/**'
   workflow_dispatch:
 
+concurrency:
+  group: publish-chart
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -54,13 +58,20 @@ jobs:
       - name: Generate index.yaml
         run: |
           cd gh-pages
-          helm repo index . --url https://cagojeiger.github.io/argocd-renderer
+          if [ -f index.yaml ]; then
+            helm repo index . --merge index.yaml --url https://cagojeiger.github.io/argocd-renderer
+          else
+            helm repo index . --url https://cagojeiger.github.io/argocd-renderer
+          fi
 
       - name: Push to gh-pages
         run: |
           cd gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff --staged --quiet || git commit -m "Publish ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
-          git push
+          git add *.tgz
+          if ! git diff --staged --quiet; then
+            git add index.yaml
+            git commit -m "Publish ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
+            git push
+          fi
