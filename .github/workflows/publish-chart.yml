@@ -1,0 +1,56 @@
+name: Publish Helm Chart to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'helm/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Get chart info
+        id: chart
+        run: |
+          echo "name=$(yq '.name' helm/Chart.yaml)" >> $GITHUB_OUTPUT
+          echo "version=$(yq '.version' helm/Chart.yaml)" >> $GITHUB_OUTPUT
+
+      - name: Build dependencies
+        run: helm dependency build helm/
+
+      - name: Package chart
+        run: helm package helm/ -d .deploy/
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Update gh-pages
+        run: |
+          cp .deploy/*.tgz gh-pages/
+          cd gh-pages
+          helm repo index . --url https://cagojeiger.github.io/argocd-renderer
+
+      - name: Push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "Publish ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
+          git push
