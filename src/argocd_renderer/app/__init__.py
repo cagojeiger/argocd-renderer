@@ -1,0 +1,1 @@
+"""ArgoCD Renderer server application."""
