@@ -1,12 +1,27 @@
-# OpenAPI Specification Guide
+# ADR-001: OpenAPI 3.1.0 스펙 선택
 
-이 문서는 ArgoCD Renderer 프로젝트의 OpenAPI 스펙 작성 기준을 정의합니다.
+## 상태
 
-## 1. OpenAPI 버전
+Accepted
 
-**선택 버전**: OpenAPI 3.1.0
+## 컨텍스트
 
-### 선택 이유
+ArgoCD Renderer 프로젝트의 API 스펙 작성 표준을 결정해야 합니다.
+
+- 현재 `api/openapi.yaml`에 OpenAPI 3.1.0 사용 중
+- `/healthz` 엔드포인트만 정의됨
+- 일관된 API 설계 가이드라인 필요
+
+## 결정
+
+### OpenAPI 버전
+
+| 항목 | 선택 | 이유 |
+|------|------|------|
+| 버전 | 3.1.0 | JSON Schema 완전 호환 |
+| 참조 스펙 | spec.openapis.org | 공식 스펙 문서 |
+
+**선택 근거**:
 
 1. **JSON Schema 완전 호환**: OpenAPI 3.1.0은 JSON Schema Draft 2020-12와 100% 호환됩니다. 이전 버전(3.0.x)에서 발생하던 `nullable`, `exclusiveMinimum` 등의 불일치 문제가 해결되었습니다.
 
@@ -16,14 +31,7 @@
 
 4. **최신 표준**: 2021년 2월 릴리스 이후 도구 지원이 성숙해졌으며, 주요 API 도구(Swagger UI, Redoc, OpenAPI Generator)가 3.1.0을 지원합니다.
 
-## 2. 공식 스펙 문서
-
-- **OpenAPI 3.1.0 Specification**: https://spec.openapis.org/oas/v3.1.0
-- **JSON Schema Draft 2020-12**: https://json-schema.org/draft/2020-12/json-schema-core.html
-
-## 3. 프로젝트 적용 가이드라인
-
-### 3.1 엔드포인트 명명 규칙
+### 엔드포인트 명명 규칙
 
 | 규칙 | 예시 |
 |------|------|
@@ -38,7 +46,7 @@
 - `{동사}{리소스}` 형식
 - 예: `renderManifest`, `listRepositories`, `healthCheck`
 
-### 3.2 응답 스키마 작성 규칙
+### 응답 스키마 규칙
 
 **성공 응답 (2xx)**:
 
@@ -67,7 +75,7 @@ responses:
 - `example` 또는 `examples`로 예제 값 제공
 - 재사용 가능한 스키마는 `components/schemas`에 정의
 
-### 3.3 에러 응답 형식
+### 에러 응답 형식
 
 모든 에러 응답은 RFC 7807 Problem Details 형식을 따릅니다.
 
@@ -116,14 +124,28 @@ components:
 | 500 | 서버 내부 오류 |
 | 502 | 업스트림 서비스 오류 |
 
-## 4. 현재 프로젝트 상태
+## 결과
+
+### 장점
+
+- JSON Schema 완전 호환으로 스키마 재사용 가능
+- Webhooks 지원으로 향후 이벤트 기반 확장 용이
+- 주요 API 도구(Swagger UI, Redoc)의 3.1.0 지원 성숙
+
+### 단점
+
+- 일부 레거시 도구에서 3.1.0 미지원 가능
+
+### 현재 프로젝트 상태
 
 - **스펙 파일 위치**: `api/openapi.yaml`
 - **정의된 엔드포인트**: `/healthz` (헬스 체크)
 - **서버 URL**: `http://localhost:8080` (로컬 개발)
 
-## 5. 참고 자료
+## 참고 자료
 
+- https://spec.openapis.org/oas/v3.1.0
+- https://json-schema.org/draft/2020-12/json-schema-core.html
+- https://datatracker.ietf.org/doc/html/rfc7807
 - [OpenAPI Initiative](https://www.openapis.org/)
 - [OpenAPI 3.1.0 Release Notes](https://www.openapis.org/blog/2021/02/18/openapi-specification-3-1-released)
-- [RFC 7807 - Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807)
