@@ -8,8 +8,8 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy project files
-COPY pyproject.toml .
-COPY argocd_renderer/ argocd_renderer/
+COPY pyproject.toml README.md ./
+COPY src/argocd_renderer/ src/argocd_renderer/
 
 # Create virtual environment and install dependencies
 RUN uv venv /app/.venv && \
