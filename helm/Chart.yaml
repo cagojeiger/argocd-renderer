@@ -2,9 +2,8 @@ apiVersion: v2
 name: argocd-renderer
 description: ArgoCD-based manifest rendering service (repo-server only, no apply/sync)
 type: application
-version: 9.3.4
-appVersion: "v3.2.5"
-
+version: 9.3.5
+appVersion: "v3.2.6"
 keywords:
   - argocd
   - kubernetes
@@ -12,11 +11,9 @@ keywords:
   - kustomize
   - manifest
   - rendering
-
 maintainers:
   - name: argocd-renderer
-
 dependencies:
   - name: argo-cd
-    version: 9.3.4
+    version: 9.3.5
     repository: https://argoproj.github.io/argo-helm
