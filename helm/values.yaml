@@ -81,10 +81,9 @@ argo-cd:
       # Default policy: deny all (explicit grant required)
       policy.default: ''
 
-      # Renderer role: read-only access to applications and repositories
+      # Renderer role: create/get/delete applications only (no sync)
       policy.csv: |
+        p, role:renderer, applications, create, */*, allow
         p, role:renderer, applications, get, */*, allow
-        p, role:renderer, repositories, get, *, allow
-        p, role:renderer, clusters, get, *, allow
-        p, role:renderer, projects, get, *, allow
+        p, role:renderer, applications, delete, */*, allow
         g, renderer, role:renderer

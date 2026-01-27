@@ -98,7 +98,7 @@ configs:
 
 ### RBAC 정책
 
-기본 정책은 deny-all (`policy.default: ''`). `renderer` 계정에 읽기 전용 역할 부여:
+기본 정책은 deny-all (`policy.default: ''`). `renderer` 계정에 렌더링에 필요한 최소 권한만 부여:
 
 ```yaml
 configs:
@@ -106,14 +106,13 @@ configs:
     create: true
     policy.default: ''
     policy.csv: |
+      p, role:renderer, applications, create, */*, allow
       p, role:renderer, applications, get, */*, allow
-      p, role:renderer, repositories, get, *, allow
-      p, role:renderer, clusters, get, *, allow
-      p, role:renderer, projects, get, *, allow
+      p, role:renderer, applications, delete, */*, allow
       g, renderer, role:renderer
 ```
 
-`admin` 계정은 ArgoCD 빌트인 admin으로 전체 권한 유지. `renderer` 계정은 매니페스트 조회만 가능.
+`renderer`는 Application create/get/delete만 가능. sync 권한이 없으므로 실제 배포는 불가.
 
 ### 서비스 계정
 
