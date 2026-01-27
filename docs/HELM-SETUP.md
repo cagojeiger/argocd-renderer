@@ -22,7 +22,7 @@ argocd CLI → API Server (REST) → repo-server (gRPC) → helm template / kust
 | `notifications.enabled: false` | Notifications | 알림 불필요 |
 | `redis-ha.enabled: false` | Redis HA | 단일 인스턴스로 충분 |
 | `crds.install: false` | ArgoCD CRDs | 클러스터에 이미 존재하거나 불필요 |
-| `configs.rbac.create: false` | RBAC ConfigMap | 기본 admin 계정 사용 |
+| `configs.rbac.policy.default: ''` | RBAC 기본 정책 | 명시적 부여만 허용 (deny by default) |
 
 ### 활성화된 컴포넌트
 
@@ -92,6 +92,83 @@ configs:
   cm:
     timeout.reconciliation: 300s    # reconciliation 타임아웃
     exec.timeout: 300s              # exec 타임아웃
+```
+
+## 보안 설정
+
+### RBAC 정책
+
+기본 정책은 deny-all (`policy.default: ''`). `renderer` 계정에 읽기 전용 역할 부여:
+
+```yaml
+configs:
+  rbac:
+    create: true
+    policy.default: ''
+    policy.csv: |
+      p, role:renderer, applications, get, */*, allow
+      p, role:renderer, repositories, get, *, allow
+      p, role:renderer, clusters, get, *, allow
+      p, role:renderer, projects, get, *, allow
+      g, renderer, role:renderer
+```
+
+`admin` 계정은 ArgoCD 빌트인 admin으로 전체 권한 유지. `renderer` 계정은 매니페스트 조회만 가능.
+
+### 서비스 계정
+
+```yaml
+configs:
+  cm:
+    accounts.renderer: apiKey
+    accounts.renderer.enabled: "true"
+```
+
+`renderer` 계정은 `apiKey`만 허용 (UI 로그인 불가). API 토큰 발급:
+
+```bash
+argocd account generate-token --account renderer
+```
+
+### NetworkPolicy
+
+```yaml
+global:
+  networkPolicy:
+    create: true
+```
+
+server, repo-server, redis 각각에 NetworkPolicy가 생성되어 Pod 간 통신을 최소화한다.
+
+## 접근 방법
+
+| 시나리오 | 방법 | 설정 |
+|----------|------|------|
+| 클러스터 내부 전용 | ClusterIP (기본값) | `server.service.type: ClusterIP` |
+| CI/CD 파이프라인 | 내부 DNS 또는 port-forward | `argocd-server.{namespace}.svc:443` |
+| 외부 노출 (Ingress) | Ingress 리소스 | 아래 예시 참조 |
+| 외부 노출 (LoadBalancer) | LB 서비스 | `server.service.type: LoadBalancer` |
+
+### Ingress 예시
+
+```yaml
+argo-cd:
+  server:
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hostname: argocd-renderer.example.com
+      tls: true
+```
+
+### CI/CD에서 사용
+
+```bash
+ARGOCD_SERVER="argocd-server.argocd.svc:443"
+TOKEN="$(argocd account generate-token --account renderer)"
+
+curl -sk "https://${ARGOCD_SERVER}/api/v1/applications/{app}/manifests" \
+  -H "Authorization: Bearer ${TOKEN}"
 ```
 
 ## 레포지토리 화이트리스트

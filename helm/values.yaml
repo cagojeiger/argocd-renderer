@@ -62,10 +62,29 @@ argo-cd:
   redis-ha:
     enabled: false
 
+  global:
+    networkPolicy:
+      create: true
+
   configs:
     cm:
       timeout.reconciliation: 300s
       exec.timeout: 300s
 
+      # Service account for API-only access (no UI login)
+      accounts.renderer: apiKey
+      accounts.renderer.enabled: "true"
+
     rbac:
-      create: false
+      create: true
+
+      # Default policy: deny all (explicit grant required)
+      policy.default: ''
+
+      # Renderer role: read-only access to applications and repositories
+      policy.csv: |
+        p, role:renderer, applications, get, */*, allow
+        p, role:renderer, repositories, get, *, allow
+        p, role:renderer, clusters, get, *, allow
+        p, role:renderer, projects, get, *, allow
+        g, renderer, role:renderer
