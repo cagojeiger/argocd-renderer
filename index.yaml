@@ -3,13 +3,13 @@ entries:
   argocd-renderer:
   - apiVersion: v2
     appVersion: v3.2.5
-    created: "2026-01-22T03:14:45.498288118Z"
+    created: "2026-01-27T05:18:46.646783793Z"
     dependencies:
     - name: argo-cd
       repository: https://argoproj.github.io/argo-helm
       version: 9.3.4
     description: ArgoCD-based manifest rendering service (repo-server only, no apply/sync)
-    digest: 80688fb6c758dd21f1936e5f7066fb7c8d0d4abb732664ee738b9a2e11724238
+    digest: d99107125bc7e0021ecf518b6ddb55a552fb92540c4bd50af9b0c14b47939639
     keywords:
     - argocd
     - kubernetes
@@ -24,4 +24,4 @@ entries:
     urls:
     - https://cagojeiger.github.io/argocd-renderer/argocd-renderer-9.3.4.tgz
     version: 9.3.4
-generated: "2026-01-22T03:14:45.4854788Z"
+generated: "2026-01-27T05:18:46.632382562Z"
