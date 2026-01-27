@@ -1,0 +1,54 @@
+================================================================================
+🚀 argocd-renderer has been installed!
+================================================================================
+
+Chart version: {{ .Chart.Version }}
+App version:   {{ .Chart.AppVersion }}
+Release:       {{ .Release.Name }}
+Namespace:     {{ .Release.Namespace }}
+
+================================================================================
+📦 Deployed Components
+================================================================================
+
+✅ ArgoCD repo-server (Rendering Engine)
+{{- $argocd := index .Values "argo-cd" }}
+   - Replicas: {{ $argocd.repoServer.replicas }}
+   - gRPC Port: {{ $argocd.repoServer.service.port }}
+   - Metrics Port: {{ $argocd.repoServer.metrics.service.port }}
+
+{{- if $argocd.redis.enabled }}
+✅ Redis (Cache)
+{{- else }}
+⚠️  Redis cache is disabled (MVP mode)
+{{- end }}
+
+================================================================================
+🔍 Verify Installation
+================================================================================
+
+Check pods:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name=argocd-repo-server
+
+Check logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name=argocd-repo-server
+
+Port-forward to test:
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ .Release.Name }}-argo-cd-repo-server 8081:8081
+
+Test gRPC health (requires grpcurl):
+  grpcurl -plaintext localhost:8081 grpc.health.v1.Health/Check
+
+================================================================================
+📊 Metrics
+================================================================================
+
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ .Release.Name }}-argo-cd-repo-server {{ $argocd.repoServer.metrics.service.port }}:{{ $argocd.repoServer.metrics.service.port }}
+
+  curl http://localhost:{{ $argocd.repoServer.metrics.service.port }}/metrics
+
+================================================================================
+
+Happy rendering! 🎉

@@ -1,0 +1,71 @@
+argo-cd:
+  enabled: true
+
+  crds:
+    install: false
+
+  controller:
+    replicas: 0
+
+  server:
+    replicas: 1
+
+    service:
+      type: ClusterIP
+      port: 80
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 2Gi
+
+  dex:
+    enabled: false
+
+  applicationSet:
+    replicas: 0
+
+  notifications:
+    enabled: false
+
+  repoServer:
+    replicas: 1
+
+    service:
+      port: 8081
+
+    metrics:
+      enabled: true
+      service:
+        port: 8084
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        memory: 4Gi
+
+    env:
+      - name: ARGOCD_EXEC_TIMEOUT
+        value: "300s"
+      - name: ARGOCD_GIT_ATTEMPTS_COUNT
+        value: "3"
+      - name: ARGOCD_GIT_RETRY_MAX_DURATION
+        value: "30s"
+
+  redis:
+    enabled: false
+
+  redis-ha:
+    enabled: false
+
+  configs:
+    cm:
+      timeout.reconciliation: 300s
+      exec.timeout: 300s
+
+    rbac:
+      create: false

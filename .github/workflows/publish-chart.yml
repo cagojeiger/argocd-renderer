@@ -1,0 +1,77 @@
+name: Publish Helm Chart to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'helm/**'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-chart
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Get chart info
+        id: chart
+        run: |
+          echo "name=$(yq '.name' helm/Chart.yaml)" >> $GITHUB_OUTPUT
+          echo "version=$(yq '.version' helm/Chart.yaml)" >> $GITHUB_OUTPUT
+
+      - name: Add Helm repositories
+        run: helm repo add argo-cd https://argoproj.github.io/argo-helm
+
+      - name: Build dependencies
+        run: helm dependency build helm/
+
+      - name: Package chart
+        run: helm package helm/ -d .deploy/
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Copy chart to gh-pages
+        run: cp .deploy/*.tgz gh-pages/
+
+      - name: Cleanup old versions
+        run: |
+          cd gh-pages
+          ls -t *.tgz 2>/dev/null | tail -n +11 | xargs -r rm -f
+
+      - name: Generate index.yaml
+        run: |
+          cd gh-pages
+          if [ -f index.yaml ]; then
+            helm repo index . --merge index.yaml --url https://cagojeiger.github.io/argocd-renderer
+          else
+            helm repo index . --url https://cagojeiger.github.io/argocd-renderer
+          fi
+
+      - name: Push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.tgz
+          if ! git diff --staged --quiet; then
+            git add index.yaml
+            git commit -m "Publish ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
+            git push
+          fi

@@ -1,0 +1,141 @@
+name: Update ArgoCD Chart Version
+
+on:
+  schedule:
+    - cron: '34 17 * * *'
+  workflow_dispatch:
+    inputs:
+      auto_merge:
+        description: 'Enable auto-merge for created PR'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Add ArgoCD Helm repository
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+
+      - name: Get latest ArgoCD chart version
+        id: latest
+        run: |
+          CHART_INFO=$(helm search repo argo/argo-cd --output json | jq -r '.[0]')
+          LATEST_CHART_VERSION=$(echo "$CHART_INFO" | jq -r '.version')
+          LATEST_APP_VERSION=$(echo "$CHART_INFO" | jq -r '.app_version')
+
+          echo "chart_version=$LATEST_CHART_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$LATEST_APP_VERSION" >> $GITHUB_OUTPUT
+
+          echo "Latest ArgoCD Helm Chart: $LATEST_CHART_VERSION (ArgoCD $LATEST_APP_VERSION)"
+
+      - name: Get current chart version
+        id: current
+        run: |
+          CURRENT_VERSION=$(yq eval '.version' helm/Chart.yaml)
+          CURRENT_APP_VERSION=$(yq eval '.appVersion' helm/Chart.yaml)
+
+          echo "chart_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$CURRENT_APP_VERSION" >> $GITHUB_OUTPUT
+
+          echo "Current Chart Version: $CURRENT_VERSION (ArgoCD $CURRENT_APP_VERSION)"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.latest.outputs.chart_version }}" != "${{ steps.current.outputs.chart_version }}" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "Update needed: ${{ steps.current.outputs.chart_version }} -> ${{ steps.latest.outputs.chart_version }}"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "Already up to date"
+          fi
+
+      - name: Update Chart.yaml
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          yq eval -i '.version = "${{ steps.latest.outputs.chart_version }}"' helm/Chart.yaml
+          yq eval -i '.appVersion = "${{ steps.latest.outputs.app_version }}"' helm/Chart.yaml
+          yq eval -i '.dependencies[0].version = "${{ steps.latest.outputs.chart_version }}"' helm/Chart.yaml
+
+          cat helm/Chart.yaml
+
+      - name: Update Helm dependencies
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          cd helm
+          helm dependency update
+          cd ..
+
+      - name: Create Pull Request
+        id: create-pr
+        if: steps.check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update ArgoCD chart to ${{ steps.latest.outputs.chart_version }}"
+          title: "chore: update ArgoCD chart to ${{ steps.latest.outputs.chart_version }}"
+          body: |
+            ## 🔄 ArgoCD Chart Update
+
+            This PR updates the ArgoCD Helm chart dependency to the latest version.
+
+            ### Changes
+            - **Chart Version**: `${{ steps.current.outputs.chart_version }}` → `${{ steps.latest.outputs.chart_version }}`
+            - **ArgoCD Version**: `${{ steps.current.outputs.app_version }}` → `${{ steps.latest.outputs.app_version }}`
+
+            ### Updated Files
+            - `helm/Chart.yaml`
+            - `helm/Chart.lock`
+            - `helm/charts/argo-cd-${{ steps.latest.outputs.chart_version }}.tgz`
+
+            ### Changelog
+            View the ArgoCD Helm chart changelog: https://github.com/argoproj/argo-helm/releases/tag/argo-cd-${{ steps.latest.outputs.chart_version }}
+
+            ---
+
+            🤖 This PR was automatically created by the `update-argocd-chart` workflow.
+          branch: update-argocd-chart-${{ steps.latest.outputs.chart_version }}
+          delete-branch: true
+          labels: |
+            dependencies
+            argocd
+            automated
+
+      - name: Enable Pull Request Auto-Merge
+        if: |
+          steps.check.outputs.needs_update == 'true' &&
+          steps.create-pr.outputs.pull-request-number != '' &&
+          (github.event_name == 'schedule' ||
+           (github.event_name == 'workflow_dispatch' &&
+            (inputs.auto_merge == true || inputs.auto_merge == null)))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}" \
+            --body "Auto-merging after required checks pass"
+
+      - name: Auto-merge Status
+        if: steps.check.outputs.needs_update == 'true' && steps.create-pr.outputs.pull-request-number != ''
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ inputs.auto_merge }}" == "true" ]; then
+            echo "✅ Auto-merge enabled for PR #${{ steps.create-pr.outputs.pull-request-number }}"
+            echo "   Merge method: squash"
+          else
+            echo "ℹ️  Auto-merge not enabled (manual review requested)"
+          fi
