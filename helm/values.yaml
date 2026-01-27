@@ -57,7 +57,7 @@ argo-cd:
         value: "30s"
 
   redis:
-    enabled: false
+    enabled: true
 
   redis-ha:
     enabled: false
