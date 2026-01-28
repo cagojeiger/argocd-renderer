@@ -2,7 +2,7 @@ apiVersion: v2
 name: argocd-renderer
 description: ArgoCD-based manifest rendering service (repo-server only, no apply/sync)
 type: application
-version: 0.1.0
+version: 9.3.4
 appVersion: "v3.2.5"
 
 keywords:
